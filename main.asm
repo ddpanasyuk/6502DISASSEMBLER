@@ -25,6 +25,7 @@ START_LOOP
         PLA
         TAY
         JSR MAKE_OP_CODE_STRING
+        CLC
         ADC TEST_ADDRESS
         STA TEST_ADDRESS
         LDX #1
@@ -64,14 +65,14 @@ TEST_ADDRESS
         byte <TEST_INSTRUCTIONS
         byte >TEST_INSTRUCTIONS
 TEST_INSTRUCTIONS
+        DEC $FF,X
+        ADC $FF,Y                
         CMP #0
         LDA $1234
         STA $4321,X
-        ADC $FF,Y
         INC $FF
-        ASL
-        ROR
-        LSR
+        LDY $4321
+        JMP $FFFF
 
 ;subroutine for making opcode string
 ;address for subroutine should be passed with addr $XXYY in X and Y
@@ -162,6 +163,7 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
         CMP #$2
         BEQ MAKE_OP_CODE_ADDRESSING_10
         RTS
+
 MAKE_OP_CODE_ADDRESSING_01
         LDA OP_CODE_FIRST_BYTE
         LSR
@@ -185,8 +187,24 @@ MAKE_OP_CODE_ADDRESSING_01
         CMP #$7
         BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
         JMP MAKE_OP_CODE_STRING_END
+
 MAKE_OP_CODE_ADDRESSING_00
-        RTS
+        LDA OP_CODE_FIRST_BYTE
+        LSR
+        LSR
+        AND #$7
+        PHA
+        CMP #$0
+        BEQ MAKE_OP_CODE_ADDRESSING_IMM
+        CMP #$1
+        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
+        CMP #$3
+        BEQ MAKE_OP_CODE_ADDRESSING_ABS
+        CMP #$5
+        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        CMP #$7
+        BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
+        JMP MAKE_OP_CODE_STRING_END
 MAKE_OP_CODE_ADDRESSING_10
         LDA OP_CODE_FIRST_BYTE
         LSR
@@ -198,13 +216,25 @@ MAKE_OP_CODE_ADDRESSING_10
         CMP #$1
         BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE 
         CMP #$2
-        BEQ MAKE_OP_CODE_ADDRESSING_ACCUMULATOR
+        BEQ MAKE_OP_CODE_STRING_END
         CMP #$3
         BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        CMP #$4
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
         CMP #$5
+        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        CMP #$6
         BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
+
+MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
+MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
+        JMP ADDRESSING_ZERO_PAGE
+MAKE_OP_CODE_ADDRESSING_ABS
+MAKE_OP_CODE_ADDRESSING_ABS_X
+MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differing
+        JMP ADDRESSING_ABS
+MAKE_OP_CODE_ADDRESSING_IMM
+        JMP ADDRESSING_IMM
+
 MAKE_OP_CODE_STRING_END
         PLA
         LDA #1
@@ -216,13 +246,8 @@ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
         LDA #3
         RTS
 
-MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
-MAKE_OP_CODE_ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
-        LDA #' '
-        JSR $FFD2
-        LDA #'$'
-        JSR $FFD2
+ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
+        JSR PRINT_SYM_SPACE
         LDA OP_CODE_SECOND_BYTE
         JSR PRINT_HEX_BYTE
         LDA #' '
@@ -234,7 +259,7 @@ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE ; all same, only difference being register off
         BEQ MAKE_OP_CODE_STRING_DUAL_BYTE_END
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
-MAKE_OP_CODE_ADDRESSING_IMM
+ADDRESSING_IMM
         LDA #' '
         JSR $FFD2
         LDA #'#'
@@ -245,13 +270,8 @@ MAKE_OP_CODE_ADDRESSING_IMM
         JSR PRINT_HEX_BYTE
         PLA
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
-MAKE_OP_CODE_ADDRESSING_ABS
-MAKE_OP_CODE_ADDRESSING_ABS_X
-MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differing
-        LDA #' '
-        JSR $FFD2
-        LDA #'$'
-        JSR $FFD2
+ADDRESSING_ABS
+        JSR PRINT_SYM_SPACE
         LDA OP_CODE_THIRD_BYTE
         JSR PRINT_HEX_BYTE
         LDA OP_CODE_SECOND_BYTE
@@ -265,8 +285,6 @@ MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differ
         BEQ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
-MAKE_OP_CODE_ADDRESSING_ACCUMULATOR
-        JMP MAKE_OP_CODE_STRING_END
 
 OP_CODE_FIRST_BYTE
         byte 0
@@ -276,6 +294,13 @@ OP_CODE_THIRD_BYTE
         byte 0
 MAKE_OP_CODE_PTR
         byte 0,0
+
+PRINT_SYM_SPACE
+        LDA #' '
+        JSR $FFD2
+        LDA #'$'
+        JSR $FFD2
+        RTS     
 
 ;function for printing string to output
 ;pass address of string $XXYY, reg X and Y
@@ -372,6 +397,7 @@ OPCODE_TYPE_TABLE
         byte >OPCODE_TABLE_10
 
 OPCODE_TABLE_00
+        byte 0,0,0,0
         text "bit"
         byte 0
         text "jmp"
@@ -386,7 +412,6 @@ OPCODE_TABLE_00
         byte 0
         text "cpx"
         byte 0
-        byte 0,0,0,0
 OPCODE_TABLE_01
         text "ora"
         byte 0
