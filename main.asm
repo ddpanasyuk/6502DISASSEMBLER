@@ -5,39 +5,73 @@ START *= $0400
         ;PHA
         ;JSR MAKE_OP_CODE_STRING
         ;JSR PRINT_HEX_BYTE
-        LDX #>TEST_INSTRUCTION
-        LDY #<TEST_INSTRUCTION
+        ;LDX #>TEST_INSTRUCTION
+        ;LDY #<TEST_INSTRUCTION
+        ;JSR SET_UP_LINE
+START_LOOP
+        LDX TEST_COUNTER
+        CPX #0
+        BEQ HERE
+        LDA TEST_ADDRESS
+        TAY
+        PHA
+        LDX #1
+        LDA TEST_ADDRESS,X
+        TAX
+        PHA
         JSR SET_UP_LINE
-
-        LDX #>TEST_INSTRUCTION                        
-        LDY #<TEST_INSTRUCTION
+        PLA
+        TAX
+        PLA
+        TAY
         JSR MAKE_OP_CODE_STRING
+        ADC TEST_ADDRESS
+        STA TEST_ADDRESS
+        LDX #1
+        LDA #0
+        ADC TEST_ADDRESS,X
+        STA TEST_ADDRESS,X
+        DEC TEST_COUNTER
+        JMP START_LOOP
+        
+        ;LDX #>TEST_INSTRUCTION                        
+        ;LDY #<TEST_INSTRUCTION
+        ;JSR MAKE_OP_CODE_STRING
+        ;JSR PRINT_HEX_BYTE
 
-        LDX #>TEST_INSTRUCTION_TWO
-        LDY #<TEST_INSTRUCTION_TWO
-        JSR SET_UP_LINE
+        ;LDX #>TEST_INSTRUCTION_TWO
+        ;LDY #<TEST_INSTRUCTION_TWO
+        ;JSR SET_UP_LINE
 
-        LDX #>TEST_INSTRUCTION_TWO                     
-        LDY #<TEST_INSTRUCTION_TWO
-        JSR MAKE_OP_CODE_STRING
+        ;LDX #>TEST_INSTRUCTION_TWO                     
+        ;LDY #<TEST_INSTRUCTION_TWO
+        ;JSR MAKE_OP_CODE_STRING
+        ;JSR PRINT_HEX_BYTE
 
-        LDX #>TEST_INSTRUCTION_THREE
-        LDY #<TEST_INSTRUCTION_THREE
-        JSR SET_UP_LINE
+        ;LDX #>TEST_INSTRUCTION_THREE
+        ;LDY #<TEST_INSTRUCTION_THREE
+        ;JSR SET_UP_LINE
 
-        LDX #>TEST_INSTRUCTION_THREE                     
-        LDY #<TEST_INSTRUCTION_THREE
-        JSR MAKE_OP_CODE_STRING
+        ;LDX #>TEST_INSTRUCTION_THREE                     
+        ;LDY #<TEST_INSTRUCTION_THREE
+        ;JSR MAKE_OP_CODE_STRING
+        ;JSR PRINT_HEX_BYTE
 HERE
         JMP HERE
-
-TEST_INSTRUCTION
-        LDA $1234,X
-TEST_INSTRUCTION_TWO
-        AND #$FF
-TEST_INSTRUCTION_THREE
-        STA $AB,Y
-
+TEST_COUNTER
+        byte 8
+TEST_ADDRESS
+        byte <TEST_INSTRUCTIONS
+        byte >TEST_INSTRUCTIONS
+TEST_INSTRUCTIONS
+        CMP #0
+        LDA $1234
+        STA $4321,X
+        ADC $FF,Y
+        INC $FF
+        ASL
+        ROR
+        LSR
 
 ;subroutine for making opcode string
 ;address for subroutine should be passed with addr $XXYY in X and Y
@@ -150,18 +184,36 @@ MAKE_OP_CODE_ADDRESSING_01
         BEQ MAKE_OP_CODE_ADDRESSING_ABS_Y
         CMP #$7
         BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
-        LDA #1
-        PLA
-        LDA #1
-        RTS
+        JMP MAKE_OP_CODE_STRING_END
 MAKE_OP_CODE_ADDRESSING_00
         RTS
 MAKE_OP_CODE_ADDRESSING_10
-        RTS
+        LDA OP_CODE_FIRST_BYTE
+        LSR
+        LSR
+        AND #$7
+        PHA
+        CMP #$0
+        BEQ MAKE_OP_CODE_ADDRESSING_IMM
+        CMP #$1
+        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE 
+        CMP #$2
+        BEQ MAKE_OP_CODE_ADDRESSING_ACCUMULATOR
+        CMP #$3
+        BEQ MAKE_OP_CODE_ADDRESSING_ABS
+        CMP #$4
+        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        CMP #$5
+        BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
 MAKE_OP_CODE_STRING_END
+        PLA
         LDA #1
+        RTS
 MAKE_OP_CODE_STRING_DUAL_BYTE_END
         LDA #2
+        RTS
+MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
+        LDA #3
         RTS
 
 MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
@@ -181,9 +233,7 @@ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE ; all same, only difference being register off
         CMP #0
         BEQ MAKE_OP_CODE_STRING_DUAL_BYTE_END
         JSR $FFD2
-        PLA
-        LDA #2
-        RTS
+        JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
 MAKE_OP_CODE_ADDRESSING_IMM
         LDA #' '
         JSR $FFD2
@@ -194,8 +244,7 @@ MAKE_OP_CODE_ADDRESSING_IMM
         LDA OP_CODE_SECOND_BYTE
         JSR PRINT_HEX_BYTE
         PLA
-        LDA #2
-        RTS
+        JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
 MAKE_OP_CODE_ADDRESSING_ABS
 MAKE_OP_CODE_ADDRESSING_ABS_X
 MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differing
@@ -213,10 +262,11 @@ MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differ
         TAX
         LDA OPCODE_ADDRESSING_TYPE_01,X
         CMP #0
-        BEQ MAKE_OP_CODE_STRING_END
+        BEQ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
         JSR $FFD2
-        LDA #3
-        RTS
+        JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
+MAKE_OP_CODE_ADDRESSING_ACCUMULATOR
+        JMP MAKE_OP_CODE_STRING_END
 
 OP_CODE_FIRST_BYTE
         byte 0
@@ -284,6 +334,15 @@ SET_UP_LINE
         JSR $FFD2
         RTS
 
+OPCODE_ADDRESSING_TYPE_00
+        byte 0
+        byte 0
+        byte 0
+        text "x"
+        text "x"
+        byte 0
+        byte 0
+        byte 0
 OPCODE_ADDRESSING_TYPE_01
         text "x"
         byte 0
@@ -292,6 +351,16 @@ OPCODE_ADDRESSING_TYPE_01
         text "x"
         text "x"
         text "y"
+        text "x"
+OPCODE_ADDRESSING_TYPE_10
+        byte 0
+        byte 0
+        byte 0
+        byte 0
+        byte 0
+        text "x"
+        byte 0
+        byte 0
         text "x"
 
 OPCODE_TYPE_TABLE
@@ -342,6 +411,8 @@ OPCODE_TABLE_10
         byte 0
         text "lsr"
         byte 0
+        text "ror"
+        byte 0
         text "stx"
         byte 0
         text "ldx"
@@ -350,7 +421,6 @@ OPCODE_TABLE_10
         byte 0
         text "inc"
         byte 0
-        byte 0,0,0,0
 
 HEX_PRINT_TABLE
         byte '0'
