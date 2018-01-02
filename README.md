@@ -4,12 +4,16 @@
 
 ## 1/1/18: Added support for 0b01 set of instructions
 ![Screenshot](testing.png)
+
 Support for opcode dissassembly (including addressing) of
-  -ORA
-  -AND
-  -EOR
-  -ADC
-  -STA
-  -LDA
-  -CMP
-  -SBC
+
+```
+  - ORA
+  - AND
+  - EOR
+  - ADC
+  - STA
+  - LDA
+  - CMP
+  - SBC
+```
