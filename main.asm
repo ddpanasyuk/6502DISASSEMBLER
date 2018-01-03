@@ -163,13 +163,13 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
 
         LDA OP_CODE_FIRST_BYTE
         AND #$1C
-        ASL
+        ASL ; table is made up of 8 byte segments for each addressing mode type
         STA MAKE_OP_CODE_PTR
         LDA OP_CODE_FIRST_BYTE
         AND #$3
-        ASL
+        ASL ; to get address offset in 8 byte segment by multiples of 2
         CLC
-        ADC MAKE_OP_CODE_PTR
+        ADC MAKE_OP_CODE_PTR ; put the two offsets together
         TAX
         LDA OPCODE_ADDRESSING_TABLE_UNIV,X
         LDY #$1
@@ -177,87 +177,9 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
         INX
         INY
         LDA OPCODE_ADDRESSING_TABLE_UNIV,X
-        STA MAKE_OP_CODE_ADDRESSING_JMP,Y
+        STA MAKE_OP_CODE_ADDRESSING_JMP,Y ; code for overwriting jump with address from table
 MAKE_OP_CODE_ADDRESSING_JMP
-        JMP $FFFF
-        ;CMP #$0
-        ;BEQ MAKE_OP_CODE_ADDRESSING_00
-        ;CMP #$1
-        ;BEQ MAKE_OP_CODE_ADDRESSING_01
-        ;CMP #$2
-        ;BEQ MAKE_OP_CODE_ADDRESSING_10
-        ;RTS
-
-;MAKE_OP_CODE_ADDRESSING_01
-        ;LDA OP_CODE_FIRST_BYTE
-        ;LSR
-        ;LSR
-        ;AND #$7
-        ;PHA
-        ;CMP #$0
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        ;CMP #$1
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
-        ;CMP #$2
-        ;BEQ MAKE_OP_CODE_ADDRESSING_IMM
-        ;CMP #$3
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        ;CMP #$4
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
-        ;CMP #$5
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        ;CMP #$6
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_Y
-        ;CMP #$7
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
-        ;JMP MAKE_OP_CODE_STRING_END
-
-;MAKE_OP_CODE_ADDRESSING_00
-        ;LDA OP_CODE_FIRST_BYTE
-        ;LSR
-        ;LSR
-        ;AND #$7
-        ;PHA
-        ;CMP #$0
-        ;BEQ MAKE_OP_CODE_ADDRESSING_IMM
-        ;CMP #$1
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
-        ;CMP #$3
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        ;CMP #$5
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        ;CMP #$7
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
-        ;JMP MAKE_OP_CODE_STRING_END
-;MAKE_OP_CODE_ADDRESSING_10
-        ;LDA OP_CODE_FIRST_BYTE
-        ;LSR
-        ;LSR
-        ;AND #$7
-        ;PHA
-        ;CMP #$0
-        ;BEQ MAKE_OP_CODE_ADDRESSING_IMM
-        ;CMP #$1
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE 
-        ;CMP #$2
-        ;BEQ MAKE_OP_CODE_STRING_END
-        ;CMP #$3
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        ;CMP #$5
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        ;CMP #$6
-        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
-
-;MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-;MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
-;MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
-;        JMP ADDRESSING_ZERO_PAGE
-;MAKE_OP_CODE_ADDRESSING_ABS
-;MAKE_OP_CODE_ADDRESSING_ABS_X
-;MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differing
-;        JMP ADDRESSING_ABS
-;MAKE_OP_CODE_ADDRESSING_IMM
-;        JMP ADDRESSING_IMM
+        JMP $FFFF ; $FFFF gets replaced with above code on run time
 
 MAKE_OP_CODE_STRING_END
         PLA
@@ -282,17 +204,18 @@ ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
         JSR GET_ADDRESSING_MODE_CHAR
         CMP #0
         BEQ MAKE_OP_CODE_STRING_DUAL_BYTE_END
-        LDX #$B4 ; LDY
-        BEQ ADDRESSING_ZERO_PAGE_Y_CHAR
-        CPX #$94 ; STY
-        BEQ ADDRESSING_ZERO_PAGE_Y_CHAR
-        JMP ADDRESSING_ZERO_PAGE_X_CHAR
-ADDRESSING_ZERO_PAGE_Y_CHAR
-        LDA #'y'
-ADDRESSING_ZERO_PAGE_X_CHAR        
+        LDX #$B4 ; LDY                  ; LDY and STY are the only two zero page instructions for which the 
+        BEQ ADDRESSING_ZERO_PAGE_X_CHAR ; 3 bits corresponding to addressing "$<ZERO PAGE>,Y" are flipped
+        CPX #$94 ; STY                  ; internally to represent "$<ZERO PAGE>,X"
+        BEQ ADDRESSING_ZERO_PAGE_X_CHAR
+        JMP ADDRESSING_ZERO_PAGE_Y_CHAR
+ADDRESSING_ZERO_PAGE_X_CHAR
+        LDA #'x'
+ADDRESSING_ZERO_PAGE_Y_CHAR        
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
-ADDRESSING_IMM
+
+ADDRESSING_IMM ; immediate addressing
         LDA #' '
         JSR $FFD2
         LDA #'#'
@@ -303,9 +226,10 @@ ADDRESSING_IMM
         JSR PRINT_HEX_BYTE
         PLA
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
+
 ADDRESSING_ABS_X
 ADDRESSING_ABS_Y
-ADDRESSING_ABS
+ADDRESSING_ABS ; all same, only difference being register offset
         JSR PRINT_SYM_SPACE
         LDA OP_CODE_THIRD_BYTE
         JSR PRINT_HEX_BYTE
@@ -318,11 +242,11 @@ ADDRESSING_ABS
         CMP #0
         BEQ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
         LDX OP_CODE_FIRST_BYTE
-        CPX #$BC ; LDY
-        BNE ADDRESSING_ABS_X_CHAR
+        CPX #$BC ; LDY                  ; as explained before, LDY's 3 addressing bits for "$<ABS>,Y"
+        BNE ADDRESSING_ABS_Y_CHAR       ; are flipped internally for "$<ABS>,X". STY does not have 
+ADDRESSING_ABS_X_CHAR                   ; the option for addressing mode "$<ABS,Y"
+        LDA #'x'
 ADDRESSING_ABS_Y_CHAR
-        LDA #'y'
-ADDRESSING_ABS_X_CHAR
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
 
