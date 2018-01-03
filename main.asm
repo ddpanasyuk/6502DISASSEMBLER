@@ -1,13 +1,5 @@
 START *= $0400
-        ;LDA #>MAKE_OP_CODE_STRING
-        ;PHA
-        ;LDA #<MAKE_OP_CODE_STRING
-        ;PHA
-        ;JSR MAKE_OP_CODE_STRING
-        ;JSR PRINT_HEX_BYTE
-        ;LDX #>TEST_INSTRUCTION
-        ;LDY #<TEST_INSTRUCTION
-        ;JSR SET_UP_LINE
+
 START_LOOP
         LDX TEST_COUNTER
         CPX #0
@@ -34,31 +26,8 @@ START_LOOP
         STA TEST_ADDRESS,X
         DEC TEST_COUNTER
         JMP START_LOOP
-        
-        ;LDX #>TEST_INSTRUCTION                        
-        ;LDY #<TEST_INSTRUCTION
-        ;JSR MAKE_OP_CODE_STRING
-        ;JSR PRINT_HEX_BYTE
-
-        ;LDX #>TEST_INSTRUCTION_TWO
-        ;LDY #<TEST_INSTRUCTION_TWO
-        ;JSR SET_UP_LINE
-
-        ;LDX #>TEST_INSTRUCTION_TWO                     
-        ;LDY #<TEST_INSTRUCTION_TWO
-        ;JSR MAKE_OP_CODE_STRING
-        ;JSR PRINT_HEX_BYTE
-
-        ;LDX #>TEST_INSTRUCTION_THREE
-        ;LDY #<TEST_INSTRUCTION_THREE
-        ;JSR SET_UP_LINE
-
-        ;LDX #>TEST_INSTRUCTION_THREE                     
-        ;LDY #<TEST_INSTRUCTION_THREE
-        ;JSR MAKE_OP_CODE_STRING
-        ;JSR PRINT_HEX_BYTE
-HERE
-        JMP HERE
+HANG
+        JMP HANG
 TEST_COUNTER
         byte 8
 TEST_ADDRESS
@@ -156,13 +125,9 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
         JSR PRINT_STRING ; push opcode name string and print it
 
         LDA OP_CODE_FIRST_BYTE
-        LSR
-        LSR
-        AND #$7
-        PHA ; save for later
-
-        LDA OP_CODE_FIRST_BYTE
         AND #$1C
+        PHA ; save for fetching addressing offset register later
+
         ASL ; table is made up of 8 byte segments for each addressing mode type
         STA MAKE_OP_CODE_PTR
         LDA OP_CODE_FIRST_BYTE
@@ -253,8 +218,6 @@ ADDRESSING_ABS_Y_CHAR
 ;function that gets addressing mode character, returns it in A
 ;3 bit addressing should be passed in A
 GET_ADDRESSING_MODE_CHAR
-        ASL
-        ASL
         STA GET_ADDRESSING_MODE_PTR
         LDA OP_CODE_FIRST_BYTE
         AND #$3
