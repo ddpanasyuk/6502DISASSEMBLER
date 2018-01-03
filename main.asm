@@ -69,9 +69,9 @@ TEST_INSTRUCTIONS
         ADC $FF,Y                
         CMP #0
         LDA $1234
-        STA $4321,X
-        INC $FF
-        LDY $4321
+        STA $4321,Y
+        STY $12,X
+        LDY $4321,X
         JMP $FFFF
 
 ;subroutine for making opcode string
@@ -154,86 +154,110 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
         LDX MAKE_OP_CODE_PTR,Y
         LDY MAKE_OP_CODE_PTR
         JSR PRINT_STRING ; push opcode name string and print it
+
+        LDA OP_CODE_FIRST_BYTE
+        LSR
+        LSR
+        AND #$7
+        PHA ; save for later
+
+        LDA OP_CODE_FIRST_BYTE
+        AND #$1C
+        ASL
+        STA MAKE_OP_CODE_PTR
         LDA OP_CODE_FIRST_BYTE
         AND #$3
-        CMP #$0
-        BEQ MAKE_OP_CODE_ADDRESSING_00
-        CMP #$1
-        BEQ MAKE_OP_CODE_ADDRESSING_01
-        CMP #$2
-        BEQ MAKE_OP_CODE_ADDRESSING_10
-        RTS
+        ASL
+        CLC
+        ADC MAKE_OP_CODE_PTR
+        TAX
+        LDA OPCODE_ADDRESSING_TABLE_UNIV,X
+        LDY #$1
+        STA MAKE_OP_CODE_ADDRESSING_JMP,Y
+        INX
+        INY
+        LDA OPCODE_ADDRESSING_TABLE_UNIV,X
+        STA MAKE_OP_CODE_ADDRESSING_JMP,Y
+MAKE_OP_CODE_ADDRESSING_JMP
+        JMP $FFFF
+        ;CMP #$0
+        ;BEQ MAKE_OP_CODE_ADDRESSING_00
+        ;CMP #$1
+        ;BEQ MAKE_OP_CODE_ADDRESSING_01
+        ;CMP #$2
+        ;BEQ MAKE_OP_CODE_ADDRESSING_10
+        ;RTS
 
-MAKE_OP_CODE_ADDRESSING_01
-        LDA OP_CODE_FIRST_BYTE
-        LSR
-        LSR
-        AND #$7
-        PHA
-        CMP #$0
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        CMP #$1
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
-        CMP #$2
-        BEQ MAKE_OP_CODE_ADDRESSING_IMM
-        CMP #$3
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        CMP #$4
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
-        CMP #$5
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        CMP #$6
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS_Y
-        CMP #$7
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
-        JMP MAKE_OP_CODE_STRING_END
+;MAKE_OP_CODE_ADDRESSING_01
+        ;LDA OP_CODE_FIRST_BYTE
+        ;LSR
+        ;LSR
+        ;AND #$7
+        ;PHA
+        ;CMP #$0
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        ;CMP #$1
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
+        ;CMP #$2
+        ;BEQ MAKE_OP_CODE_ADDRESSING_IMM
+        ;CMP #$3
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS
+        ;CMP #$4
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
+        ;CMP #$5
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        ;CMP #$6
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_Y
+        ;CMP #$7
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
+        ;JMP MAKE_OP_CODE_STRING_END
 
-MAKE_OP_CODE_ADDRESSING_00
-        LDA OP_CODE_FIRST_BYTE
-        LSR
-        LSR
-        AND #$7
-        PHA
-        CMP #$0
-        BEQ MAKE_OP_CODE_ADDRESSING_IMM
-        CMP #$1
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
-        CMP #$3
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        CMP #$5
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        CMP #$7
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
-        JMP MAKE_OP_CODE_STRING_END
-MAKE_OP_CODE_ADDRESSING_10
-        LDA OP_CODE_FIRST_BYTE
-        LSR
-        LSR
-        AND #$7
-        PHA
-        CMP #$0
-        BEQ MAKE_OP_CODE_ADDRESSING_IMM
-        CMP #$1
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE 
-        CMP #$2
-        BEQ MAKE_OP_CODE_STRING_END
-        CMP #$3
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS
-        CMP #$5
-        BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-        CMP #$6
-        BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
+;MAKE_OP_CODE_ADDRESSING_00
+        ;LDA OP_CODE_FIRST_BYTE
+        ;LSR
+        ;LSR
+        ;AND #$7
+        ;PHA
+        ;CMP #$0
+        ;BEQ MAKE_OP_CODE_ADDRESSING_IMM
+        ;CMP #$1
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
+        ;CMP #$3
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS
+        ;CMP #$5
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        ;CMP #$7
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
+        ;JMP MAKE_OP_CODE_STRING_END
+;MAKE_OP_CODE_ADDRESSING_10
+        ;LDA OP_CODE_FIRST_BYTE
+        ;LSR
+        ;LSR
+        ;AND #$7
+        ;PHA
+        ;CMP #$0
+        ;BEQ MAKE_OP_CODE_ADDRESSING_IMM
+        ;CMP #$1
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE 
+        ;CMP #$2
+        ;BEQ MAKE_OP_CODE_STRING_END
+        ;CMP #$3
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS
+        ;CMP #$5
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+        ;CMP #$6
+        ;BEQ MAKE_OP_CODE_ADDRESSING_ABS_X
 
-MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
-MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
-MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
-        JMP ADDRESSING_ZERO_PAGE
-MAKE_OP_CODE_ADDRESSING_ABS
-MAKE_OP_CODE_ADDRESSING_ABS_X
-MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differing
-        JMP ADDRESSING_ABS
-MAKE_OP_CODE_ADDRESSING_IMM
-        JMP ADDRESSING_IMM
+;MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_X
+;MAKE_OP_CODE_ADDRESSING_ZERO_PAGE_Y
+;MAKE_OP_CODE_ADDRESSING_ZERO_PAGE
+;        JMP ADDRESSING_ZERO_PAGE
+;MAKE_OP_CODE_ADDRESSING_ABS
+;MAKE_OP_CODE_ADDRESSING_ABS_X
+;MAKE_OP_CODE_ADDRESSING_ABS_Y ; these are also all the same, with X/Y/' ' differing
+;        JMP ADDRESSING_ABS
+;MAKE_OP_CODE_ADDRESSING_IMM
+;        JMP ADDRESSING_IMM
 
 MAKE_OP_CODE_STRING_END
         PLA
@@ -246,6 +270,8 @@ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
         LDA #3
         RTS
 
+ADDRESSING_ZERO_PAGE_X
+ADDRESSING_ZERO_PAGE_Y
 ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
         JSR PRINT_SYM_SPACE
         LDA OP_CODE_SECOND_BYTE
@@ -253,10 +279,17 @@ ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
         LDA #' '
         JSR $FFD2
         PLA
-        TAX
-        LDA OPCODE_ADDRESSING_TYPE_01,X
+        JSR GET_ADDRESSING_MODE_CHAR
         CMP #0
         BEQ MAKE_OP_CODE_STRING_DUAL_BYTE_END
+        LDX #$B4 ; LDY
+        BEQ ADDRESSING_ZERO_PAGE_Y_CHAR
+        CPX #$94 ; STY
+        BEQ ADDRESSING_ZERO_PAGE_Y_CHAR
+        JMP ADDRESSING_ZERO_PAGE_X_CHAR
+ADDRESSING_ZERO_PAGE_Y_CHAR
+        LDA #'y'
+ADDRESSING_ZERO_PAGE_X_CHAR        
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
 ADDRESSING_IMM
@@ -270,6 +303,8 @@ ADDRESSING_IMM
         JSR PRINT_HEX_BYTE
         PLA
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
+ADDRESSING_ABS_X
+ADDRESSING_ABS_Y
 ADDRESSING_ABS
         JSR PRINT_SYM_SPACE
         LDA OP_CODE_THIRD_BYTE
@@ -279,12 +314,33 @@ ADDRESSING_ABS
         LDA #' '
         JSR $FFD2
         PLA
-        TAX
-        LDA OPCODE_ADDRESSING_TYPE_01,X
+        JSR GET_ADDRESSING_MODE_CHAR
         CMP #0
         BEQ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
+        LDX OP_CODE_FIRST_BYTE
+        CPX #$BC ; LDY
+        BNE ADDRESSING_ABS_X_CHAR
+ADDRESSING_ABS_Y_CHAR
+        LDA #'y'
+ADDRESSING_ABS_X_CHAR
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
+
+;function that gets addressing mode character, returns it in A
+;3 bit addressing should be passed in A
+GET_ADDRESSING_MODE_CHAR
+        ASL
+        ASL
+        STA GET_ADDRESSING_MODE_PTR
+        LDA OP_CODE_FIRST_BYTE
+        AND #$3
+        CLC
+        ADC GET_ADDRESSING_MODE_PTR
+        TAX
+        LDA OPCODE_ADDRESSING_TYPE,X
+        RTS
+GET_ADDRESSING_MODE_PTR
+        byte 0
 
 OP_CODE_FIRST_BYTE
         byte 0
@@ -359,34 +415,135 @@ SET_UP_LINE
         JSR $FFD2
         RTS
 
-OPCODE_ADDRESSING_TYPE_00
+OPCODE_ADDRESSING_TABLE_UNIV
+        ; 000
+        byte <ADDRESSING_IMM
+        byte >ADDRESSING_IMM            ; 00
+        byte <ADDRESSING_ZERO_PAGE_X
+        byte >ADDRESSING_ZERO_PAGE_X    ; 01
+        byte <ADDRESSING_IMM
+        byte >ADDRESSING_IMM            ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 001
+        byte <ADDRESSING_ZERO_PAGE
+        byte >ADDRESSING_ZERO_PAGE      ; 00
+        byte <ADDRESSING_ZERO_PAGE
+        byte >ADDRESSING_ZERO_PAGE      ; 01
+        byte <ADDRESSING_ZERO_PAGE
+        byte >ADDRESSING_ZERO_PAGE      ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 010
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END   ; 00
+        byte <ADDRESSING_IMM
+        byte >ADDRESSING_IMM            ; 01
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END   ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 011
+        byte <ADDRESSING_ABS
+        byte >ADDRESSING_ABS            ; 00
+        byte <ADDRESSING_ABS
+        byte >ADDRESSING_ABS            ; 01
+        byte <ADDRESSING_ABS
+        byte >ADDRESSING_ABS            ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 100
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END   ; 00
+        byte <ADDRESSING_ZERO_PAGE_Y
+        byte >ADDRESSING_ZERO_PAGE_Y    ; 01
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END   ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 101
+        byte <ADDRESSING_ZERO_PAGE_X
+        byte >ADDRESSING_ZERO_PAGE_X    ; 00
+        byte <ADDRESSING_ZERO_PAGE_X
+        byte >ADDRESSING_ZERO_PAGE_X    ; 01
+        byte <ADDRESSING_ZERO_PAGE_X
+        byte >ADDRESSING_ZERO_PAGE_X    ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 110
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END   ; 00
+        byte <ADDRESSING_ABS_Y
+        byte >ADDRESSING_ABS_Y          ; 01
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END   ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+        ; 111
+        byte <ADDRESSING_ABS_X
+        byte >ADDRESSING_ABS_X          ; 00
+        byte <ADDRESSING_ABS_X
+        byte >ADDRESSING_ABS_X          ; 01
+        byte <ADDRESSING_ABS_X
+        byte >ADDRESSING_ABS_X            ; 10
+        byte <MAKE_OP_CODE_STRING_END
+        byte >MAKE_OP_CODE_STRING_END
+
+OPCODE_ADDRESSING_TYPE
+        ; 000
+        byte 0  ; 00
+        text "x"; 01
+        byte 0  ; 10
         byte 0
+
+        ; 001
+        byte 0  ; 00
+        byte 0  ; 01
+        byte 0  ; 10
         byte 0
+
+        ; 010
+        byte 0  ; 00
+        byte 0  ; 01
+        byte 0  ; 10
         byte 0
-        text "x"
-        text "x"
+
+        ; 011
+        byte 0  ; 00
+        byte 0  ; 01
+        byte 0  ; 10
         byte 0
+
+        ; 100
+        byte 0  ; 00
+        text "y"; 01
+        byte 0  ; 10
         byte 0
+
+        ; 101
+        text "x"; 00
+        text "x"; 01
+        text "x"; 10
         byte 0
-OPCODE_ADDRESSING_TYPE_01
-        text "x"
+        
+        ; 110
+        byte 0  ; 00
+        text "y"; 01
+        byte 0  ; 10
         byte 0
+
+        ; 111
+        text "x"; 00
+        text "x"; 01
+        text "x"; 10
         byte 0
-        byte 0
-        text "x"
-        text "x"
-        text "y"
-        text "x"
-OPCODE_ADDRESSING_TYPE_10
-        byte 0
-        byte 0
-        byte 0
-        byte 0
-        byte 0
-        text "x"
-        byte 0
-        byte 0
-        text "x"
 
 OPCODE_TYPE_TABLE
         byte <OPCODE_TABLE_00
