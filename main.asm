@@ -3,7 +3,7 @@ START *= $0400
 START_LOOP
         LDX TEST_COUNTER
         CPX #0
-        BEQ HERE
+        BEQ HANG
         LDA TEST_ADDRESS
         TAY
         PHA
