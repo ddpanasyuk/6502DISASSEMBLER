@@ -34,13 +34,13 @@ TEST_ADDRESS
         byte <TEST_INSTRUCTIONS
         byte >TEST_INSTRUCTIONS
 TEST_INSTRUCTIONS
+        LDY $4321,X
+        LDX $1234,Y
         DEC $FF,X
         ADC $FF,Y                
         CMP #0
         LDA $1234
-        STA $4321,Y
         STY $12,X
-        LDY $4321,X
         JMP $FFFF
 
 ;subroutine for making opcode string
@@ -169,14 +169,14 @@ ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
         JSR GET_ADDRESSING_MODE_CHAR
         CMP #0
         BEQ MAKE_OP_CODE_STRING_DUAL_BYTE_END
-        LDX #$B4 ; LDY                  ; LDY and STY are the only two zero page instructions for which the 
-        BEQ ADDRESSING_ZERO_PAGE_X_CHAR ; 3 bits corresponding to addressing "$<ZERO PAGE>,Y" are flipped
-        CPX #$94 ; STY                  ; internally to represent "$<ZERO PAGE>,X"
-        BEQ ADDRESSING_ZERO_PAGE_X_CHAR
-        JMP ADDRESSING_ZERO_PAGE_Y_CHAR
-ADDRESSING_ZERO_PAGE_X_CHAR
-        LDA #'x'
-ADDRESSING_ZERO_PAGE_Y_CHAR        
+        LDX #$B6 ; LDX                  ; LDX and STX are the only two zero page instructions for which the 
+        BEQ ADDRESSING_ZERO_PAGE_Y_CHAR ; 3 bits corresponding to addressing "$<ZERO PAGE>,X" are flipped
+        CPX #$96 ; STX                  ; internally to represent "$<ZERO PAGE>,Y"
+        BEQ ADDRESSING_ZERO_PAGE_Y_CHAR
+        JMP ADDRESSING_ZERO_PAGE_X_CHAR
+ADDRESSING_ZERO_PAGE_Y_CHAR
+        LDA #$59
+ADDRESSING_ZERO_PAGE_X_CHAR        
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
 
@@ -207,11 +207,11 @@ ADDRESSING_ABS ; all same, only difference being register offset
         CMP #0
         BEQ MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
         LDX OP_CODE_FIRST_BYTE
-        CPX #$BC ; LDY                  ; as explained before, LDY's 3 addressing bits for "$<ABS>,Y"
-        BNE ADDRESSING_ABS_Y_CHAR       ; are flipped internally for "$<ABS>,X". STY does not have 
-ADDRESSING_ABS_X_CHAR                   ; the option for addressing mode "$<ABS,Y"
-        LDA #'x'
-ADDRESSING_ABS_Y_CHAR
+        CPX #$BE ; LDX                  ; as explained before, LDX's 3 addressing bits for "$<ABS>,X"
+        BNE ADDRESSING_ABS_X_CHAR       ; are flipped internally for "$<ABS>,Y". STX does not have 
+ADDRESSING_ABS_Y_CHAR                   ; the option for addressing mode "$<ABS,X"
+        LDA #$59
+ADDRESSING_ABS_X_CHAR
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
 
