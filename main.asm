@@ -34,14 +34,14 @@ TEST_ADDRESS
         byte <TEST_INSTRUCTIONS
         byte >TEST_INSTRUCTIONS
 TEST_INSTRUCTIONS
-        LDY $4321,X
-        LDX $1234,Y
-        DEC $FF,X
-        ADC $FF,Y                
+        JSR $1234
+        BVC TEST_INSTRUCTIONS
+        BNE TEST_INSTRUCTIONS
         CMP #0
         LDA $1234
         STY $12,X
         JMP $FFFF
+        BRK
 
 ;subroutine for making opcode string
 ;address for subroutine should be passed wivic-th addr $XXYY in X and Y
@@ -59,41 +59,126 @@ MAKE_OP_CODE_STRING_TO_LOAD_LOOP
         BNE MAKE_OP_CODE_STRING_TO_LOAD_LOOP
 
         LDA OP_CODE_FIRST_BYTE
-        AND #$3 ; gives us address in opcode_type_table to load opcode from
+        AND #$F
+        CMP #$8
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_EIGHT
+        CMP #$A
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_A
+        CMP #$0
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
+        JMP MAKE_OP_CODE_STRING_GET_STRING_TABLE
+
+; single byte instruction ending with 8
+MAKE_OP_CODE_STRING_INSTRUCTION_EIGHT     
+        LDA #<OPCODE_TABLE_EIGHT
+        STA $00
+        LDA #>OPCODE_TABLE_EIGHT
+        STA $01
+        
+        LDA OP_CODE_FIRST_BYTE
+        AND #$F0
+        LSR 
+        LSR
+        JSR PRINT_STRING
+        
+MAKE_OP_CODE_STRING_INSTRUCTION_ONE_BYTE_END
+        LDA #1
+        RTS
+
+MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
+        LDA #<OPCODE_TABLE_BRANCH
+        STA $00
+        LDA #>OPCODE_TABLE_BRANCH
+        STA $01
+
+        LDA OP_CODE_FIRST_BYTE
+        AND #$F0
+        LSR
+        LSR
+        JSR PRINT_STRING
+
+        LDA OP_CODE_FIRST_BYTE
+        CMP #$00 ; check for brk
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_ONE_BYTE_END
+        CMP #$40 ; check for rti
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_ONE_BYTE_END
+        CMP #$60 ; check for rts
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_ONE_BYTE_END
+        CMP #$20 ; check if it's jsr
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH_JSR
+        
+        LDA #' '
+        JSR $FFD2
+        LDA #'$'
+        JSR $FFD2
+
+        LDA OP_CODE_THIRD_BYTE
+        JSR PRINT_HEX_BYTE
+
+        LDA #$2
+        RTS
+
+MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH_JSR
+        LDA #' '
+        JSR $FFD2
+        LDA #'$'
+        JSR $FFD2
+
+        LDA OP_CODE_THIRD_BYTE
+        JSR PRINT_HEX_BYTE
+        LDA OP_CODE_SECOND_BYTE
+        JSR PRINT_HEX_BYTE
+
+        LDA #$3
+        RTS
+
+
+MAKE_OP_CODE_STRING_INSTRUCTION_A
+        LDA #<OPCODE_TABLE_A
+        STA $00
+        LDA #>OPCODE_TABLE_A
+        STA $01
+
+        LDA OP_CODE_FIRST_BYTE
+        AND #$F0
+        LSR
+        LSR
+        AND #$1F                
+        JSR PRINT_STRING
+
+        LDA #1
+        RTS
+
+MAKE_OP_CODE_STRING_GET_STRING_TABLE
+        LDA OP_CODE_FIRST_BYTE
+        AND #$3
+        STA OP_CODE_CC_BYTE
+
+        ;LDA OP_CODE_FIRST_BYTE
+        ;AND #$3 ; gives us address in opcode_type_table to load opcode from
         ASL ; shift to the left to double for op code type table
-        TAX ; transfer A to X
-        LDY #1
-        LDA OPCODE_TYPE_TABLE,X ; get lower byte of opcode name table
-        STA MAKE_OP_CODE_STRING_INSTRUCTION_LOWER,Y ; store lower byte into pointer
-        INX 
-        LDA OPCODE_TYPE_TABLE,X ; get upper byte of opcode name table
-        STA MAKE_OP_CODE_STRING_INSTRUCTION_UPPER,Y ; store upper byte into pointer
+        TAY
+        
+        ; indirect index addressing to get string table location
+        LDA #<OPCODE_TYPE_TABLE
+        STA $02
+        LDA #>OPCODE_TYPE_TABLE
+        STA $03
+
+        LDA ($02),Y
+        STA $00
+        INY
+        LDA ($02),Y
+        STA $01
+
 MAKE_OP_CODE_STRING_INSTRUCTION
         LDA OP_CODE_FIRST_BYTE
         LSR 
         LSR
         LSR
         CLC ; 3 shifts and carry bit clear to find opcode name in table
-        TAY
-        LDX #1
-MAKE_OP_CODE_STRING_INSTRUCTION_LOWER
-        LDA #0 ; this gets over written with correct address byte
-        STA MAKE_OP_CODE_PTR 
-MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
-        LDA #0 ; this gets over written with correct address byte
-        STA MAKE_OP_CODE_PTR,X
-        TYA
         AND #$1C ; get rid of any bits we don't need
-        ADC MAKE_OP_CODE_PTR
-        STA MAKE_OP_CODE_PTR ; add and store offset into pointer
-        LDA #0
-        ADC MAKE_OP_CODE_PTR,X ; carry any possible bit
-        STA MAKE_OP_CODE_PTR,X ; store upper byte
-        
-        LDY #1
-        LDX MAKE_OP_CODE_PTR,Y
-        LDY MAKE_OP_CODE_PTR
-        JSR PRINT_STRING ; push opcode name string and print it
+        JSR PRINT_STRING
 
         LDA OP_CODE_FIRST_BYTE
         AND #$1C
@@ -101,12 +186,16 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
 
         ASL ; table is made up of 8 byte segments for each addressing mode type
         STA MAKE_OP_CODE_PTR
-        LDA OP_CODE_FIRST_BYTE
-        AND #$3
+
+        ;LDA OP_CODE_FIRST_BYTE
+        ;AND #$3
+        LDA OP_CODE_CC_BYTE
         ASL ; to get address offset in 8 byte segment by multiples of 2
+
         CLC
         ADC MAKE_OP_CODE_PTR ; put the two offsets together
         TAX
+
         LDA OPCODE_ADDRESSING_TABLE_UNIV,X
         LDY #$1
         STA MAKE_OP_CODE_ADDRESSING_JMP,Y
@@ -116,17 +205,6 @@ MAKE_OP_CODE_STRING_INSTRUCTION_UPPER
         STA MAKE_OP_CODE_ADDRESSING_JMP,Y ; code for overwriting jump with address from table
 MAKE_OP_CODE_ADDRESSING_JMP
         JMP $FFFF ; $FFFF gets replaced with above code on run time
-
-MAKE_OP_CODE_STRING_END
-        PLA
-        LDA #1
-        RTS
-MAKE_OP_CODE_STRING_DUAL_BYTE_END
-        LDA #2
-        RTS
-MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
-        LDA #3
-        RTS
 
 ADDRESSING_ZERO_PAGE_X
 ADDRESSING_ZERO_PAGE_Y
@@ -186,12 +264,24 @@ ADDRESSING_ABS_X_CHAR
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
 
+MAKE_OP_CODE_STRING_END
+        PLA
+        LDA #1
+        RTS
+MAKE_OP_CODE_STRING_DUAL_BYTE_END
+        LDA #2
+        RTS
+MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
+        LDA #3
+        RTS
+
 ;function that gets addressing mode character, returns it in A
 ;3 bit addressing should be passed in A
 GET_ADDRESSING_MODE_CHAR
         STA GET_ADDRESSING_MODE_PTR
-        LDA OP_CODE_FIRST_BYTE
-        AND #$3
+        LDA OP_CODE_CC_BYTE
+        ;LDA OP_CODE_FIRST_BYTE
+        ;AND #$3
         CLC
         ADC GET_ADDRESSING_MODE_PTR
         TAX
@@ -206,6 +296,8 @@ OP_CODE_SECOND_BYTE
         byte 0
 OP_CODE_THIRD_BYTE
         byte 0
+OP_CODE_CC_BYTE
+        byte 0
 MAKE_OP_CODE_PTR
         byte 0,0
 
@@ -216,13 +308,15 @@ PRINT_SYM_SPACE
         JSR $FFD2
         RTS     
 
+; put address in $00 and $01
+; call with desired offset in Y
 ;function for printing string to output
-;pass address of string $XXYY, reg X and Y
+;;pass address of string $XXYY, reg X and Y
 PRINT_STRING
-        STY $00
-        STX $01
-        LDY #0
-        STY PRINT_STRING_PTR
+        ;STY $00
+        ;STX $01
+        ;LDY #0
+        STA PRINT_STRING_PTR
 PRINT_STRING_LOOP
         LDY PRINT_STRING_PTR
 PRINT_STRING_CHAR_TO_LOAD
@@ -456,6 +550,91 @@ OPCODE_TABLE_10
         text "dec"
         byte 0
         text "inc"
+        byte 0
+
+; single byte instructions ending with 0x8
+OPCODE_TABLE_EIGHT
+        text "php" ; $08
+        byte 0
+        text "clc" ; $18
+        byte 0          
+        text "plp" ; $28
+        byte 0
+        text "sec" ; $38
+        byte 0
+        text "pha" ; $48
+        byte 0
+        text "cli" ; $58
+        byte 0
+        text "pla" ; $68
+        byte 0
+        text "sei" ; $78
+        byte 0
+        text "dey" ; $88
+        byte 0
+        text "tya" ; $98
+        byte 0 
+        text "tay" ; $A8
+        byte 0
+        text "clv" ; $B8
+        byte 0
+        text "iny" ; $C8
+        byte 0
+        text "cld" ; $D8
+        byte 0
+        text "inx" ; $E8
+        byte 0
+        text "sed" ; $F8
+        byte 0
+
+; single byte instructions ending with 0xA
+OPCODE_TABLE_A
+        text "txa" ; $8A
+        byte 0
+        text "txs" ; $9A
+        byte 0
+        text "tax" ; $AA
+        byte 0
+        text "tsx" ; $BA
+        byte 0
+        text "dex" ; $CA
+        byte 0
+        text "nop" ; $EA
+        byte 0
+
+; branching instructions
+OPCODE_TABLE_BRANCH
+        text "brk" ; $00
+        byte 0
+        text "bpl" ; $10
+        byte 0
+        text "jsr" ; $20
+        byte 0
+        text "bmi" ; $30
+        byte 0
+        text "rti" ; $40
+        byte 0
+        text "bvc" ; $50
+        byte 0
+        text "rts" ; $60
+        byte 0
+        text "bvs" ; $70
+        byte 0
+        byte 0,0   ; $80
+        byte 0,0
+        text "bcc" ; $90
+        byte 0
+        byte 0,0   ; $A0
+        byte 0,0
+        text "bcs" ; $B0
+        byte 0
+        byte 0,0   ; $C0
+        byte 0,0
+        byte "bne" ; $D0
+        byte 0
+        byte 0,0   ; $E0
+        byte 0,0
+        byte "beq" ; $F0
         byte 0
 
 HEX_PRINT_TABLE
