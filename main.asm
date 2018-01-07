@@ -44,48 +44,19 @@ TEST_INSTRUCTIONS
         JMP $FFFF
 
 ;subroutine for making opcode string
-;address for subroutine should be passed with addr $XXYY in X and Y
+;address for subroutine should be passed wivic-th addr $XXYY in X and Y
 ;string to print afterwards can be found at address MAKE_OP_CODE_STRING_TXT
 ;returns number of bytes op-code used in register A
 MAKE_OP_CODE_STRING
-        TYA
-        LDY #1
-        STA MAKE_OP_CODE_STRING_OP_TO_LOAD,Y
-        TXA
+        STY $00
+        STX $01
+        LDY #0
+MAKE_OP_CODE_STRING_TO_LOAD_LOOP
+        LDA ($00),Y
+        STA OP_CODE_FIRST_BYTE,Y
         INY
-        STA MAKE_OP_CODE_STRING_OP_TO_LOAD,Y ; get address to load opcode from
-
-MAKE_OP_CODE_STRING_OP_TO_LOAD
-        LDA $FFFF ; this gets over written with correct address
-        STA OP_CODE_FIRST_BYTE
-        
-        CLC
-        DEY
-        LDA MAKE_OP_CODE_STRING_OP_TO_LOAD,Y
-        ADC #1
-        STA MAKE_OP_CODE_STRING_OP_TO_LOAD_SECOND,Y
-        INY
-        LDA MAKE_OP_CODE_STRING_OP_TO_LOAD,Y
-        ADC #0
-        STA MAKE_OP_CODE_STRING_OP_TO_LOAD_SECOND,Y
-
-MAKE_OP_CODE_STRING_OP_TO_LOAD_SECOND
-        LDA $FFFF
-        STA OP_CODE_SECOND_BYTE
-
-        CLC
-        LDY #1
-        LDA MAKE_OP_CODE_STRING_OP_TO_LOAD,Y
-        ADC #2
-        STA MAKE_OP_CODE_STRING_OP_TO_LOAD_THIRD,Y
-        INY
-        LDA MAKE_OP_CODE_STRING_OP_TO_LOAD,Y
-        ADC #0
-        STA MAKE_OP_CODE_STRING_OP_TO_LOAD_THIRD,Y
-
-MAKE_OP_CODE_STRING_OP_TO_LOAD_THIRD
-        LDA $FFFF
-        STA OP_CODE_THIRD_BYTE ; loaded 3 bytes just in case
+        CPY #3
+        BNE MAKE_OP_CODE_STRING_TO_LOAD_LOOP
 
         LDA OP_CODE_FIRST_BYTE
         AND #$3 ; gives us address in opcode_type_table to load opcode from
@@ -248,18 +219,14 @@ PRINT_SYM_SPACE
 ;function for printing string to output
 ;pass address of string $XXYY, reg X and Y
 PRINT_STRING
-        TYA
-        LDY #1
-        STA PRINT_STRING_CHAR_TO_LOAD,Y
-        TXA
-        INY
-        STA PRINT_STRING_CHAR_TO_LOAD,Y ; get address to load opcode from
-        LDX #0
-        STX PRINT_STRING_PTR
+        STY $00
+        STX $01
+        LDY #0
+        STY PRINT_STRING_PTR
 PRINT_STRING_LOOP
-        LDX PRINT_STRING_PTR
+        LDY PRINT_STRING_PTR
 PRINT_STRING_CHAR_TO_LOAD
-        LDA $FFFF,X
+        LDA ($00),Y
         CMP #0
         BEQ PRINT_STRING_END
         JSR $FFD2
