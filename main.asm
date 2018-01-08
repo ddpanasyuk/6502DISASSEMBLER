@@ -1,80 +1,78 @@
 START *= $0400
+        byte 0
+        byte $04
 
 START_LOOP
         LDA #13
         JSR $FFD2
         LDA #'$'
         JSR $FFD2
-        LDA #0
+        LDA #4
         STA STR_ADDRESS_TO_LOAD_COUNTER        
+        LDA #0
+        STA STR_ADDRESS_TO_LOAD_OFFSET
 LOAD_CHARS_LOOP
         LDY STR_ADDRESS_TO_LOAD_COUNTER
-        JSR $FFCF
-        CMP #13
-        STA STR_ADDRESS_TO_LOAD_COUNTER,Y
-        INY
+        CPY #0  
         BEQ START_DISASSEMBLE
+        JSR $FFCF
+        CMP #88 ; e(x)ecute command
+        BEQ START_DISASSEMBLE_NEXT_ADDR
+        CMP #81 ; (q)uit command
+        BEQ QUIT_PROGRAM
+        LDY STR_ADDRESS_TO_LOAD_OFFSET
+        STA STR_ADDRESS_TO_LOAD,Y
+        INC STR_ADDRESS_TO_LOAD_OFFSET
+        DEC STR_ADDRESS_TO_LOAD_COUNTER
         JMP LOAD_CHARS_LOOP
 START_DISASSEMBLE
-        
+        LDX STR_ADDRESS_TO_LOAD
+        LDY #1
+        LDA STR_ADDRESS_TO_LOAD,Y
+        TAY
+        JSR CHARS_TO_BYTE
+        LDY #1
+        STA ADDRESS_TO_LOAD,Y
+        INY
+        LDX STR_ADDRESS_TO_LOAD,Y
+        INY
+        LDA STR_ADDRESS_TO_LOAD,Y
+        TAY
+        JSR CHARS_TO_BYTE
+        STA ADDRESS_TO_LOAD ; convert our input hex string into regular bytes
 
-        ;LDX STR_ADDRESS_TO_LOAD
-        ;LDY #1
-        ;LDA STR_ADDRESS_TO_LOAD,Y
-        ;TAY
-        ;JSR CHARS_TO_BYTE
-        ;LDY #1
-        ;STA ADDRESS_TO_LOAD,Y
-        ;INY
-        ;LDX STR_ADDRESS_TO_LOAD,Y
-        ;INY
-        ;LDA STR_ADDRESS_TO_LOAD,Y
-        ;TAY
-        ;JSR CHARS_TO_BYTE
-        ;STA ADDRESS_TO_LOAD
+START_DISASSEMBLE_NEXT_ADDR
+        LDY #1
+        LDX ADDRESS_TO_LOAD,Y
+        LDY ADDRESS_TO_LOAD
+        JSR SET_UP_LINE ; print line
 
-        ;JSR PRINT_HEX_BYTE
-        ;LDY #1
-        ;LDA ADDRESS_TO_LOAD,Y
-        ;JSR PRINT_HEX_BYTE
-        ;JMP HANG
+        LDY #1
+        LDX ADDRESS_TO_LOAD,Y
+        LDY ADDRESS_TO_LOAD
+        JSR MAKE_OP_CODE_STRING ; print disassembled line
 
-        ;JMP START_LOOP
-        
-        ;LDX TEST_COUNTER
-        ;CPX #0
-        ;BEQ HANG
-        ;LDA TEST_ADDRESS
-        ;TAY
-        ;PHA
-        ;LDX #1
-        ;LDA TEST_ADDRESS,X
-        ;TAX
-        ;PHA
-        ;JSR SET_UP_LINE
-        ;PLA
-        ;TAX
-        ;PLA
-        ;TAY
-        ;JSR MAKE_OP_CODE_STRING
-        ;CLC
-        ;ADC TEST_ADDRESS
-        ;STA TEST_ADDRESS
-        ;LDX #1
-        ;LDA #0
-        ;ADC TEST_ADDRESS,X
-        ;STA TEST_ADDRESS,X
-        ;DEC TEST_COUNTER
-        ;JMP START_LOOP
-HANG
-        JMP HANG
+        CLC
+        ADC ADDRESS_TO_LOAD
+        STA ADDRESS_TO_LOAD
+        LDA #0
+        LDY #1
+        ADC ADDRESS_TO_LOAD,Y
+        STA ADDRESS_TO_LOAD,Y ; next address 
+
+        JMP START_LOOP
+
+QUIT_PROGRAM
+        BRK
+
 STR_ADDRESS_TO_LOAD
         byte 0,0,0,0
 ADDRESS_TO_LOAD
         byte 0,0
 STR_ADDRESS_TO_LOAD_COUNTER
         byte 0
-        
+STR_ADDRESS_TO_LOAD_OFFSET
+        byte 0
 
 ;subroutine for making opcode string
 ;address for subroutine should be passed wivic-th addr $XXYY in X and Y
@@ -385,16 +383,25 @@ PRINT_HEX_BYTE
 ;function for setting up line
 ;pass address of line in $XXYY
 SET_UP_LINE
+        STX SET_UP_LINE_X
+        STY SET_UP_LINE_Y
         LDA #13
         JSR $FFD2
         LDA #'$'
+        JSR $FFD2
+        LDX SET_UP_LINE_X
         TXA
         JSR PRINT_HEX_BYTE
+        LDY SET_UP_LINE_Y
         TYA
         JSR PRINT_HEX_BYTE
         LDA #':'
         JSR $FFD2
         RTS
+SET_UP_LINE_X
+        byte 0
+SET_UP_LINE_Y
+        byte 0
 
 ;converts two hex chars to a byte
 ;pass in X,Y as $XY
