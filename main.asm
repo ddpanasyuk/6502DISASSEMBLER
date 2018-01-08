@@ -1,47 +1,80 @@
 START *= $0400
 
 START_LOOP
-        LDX TEST_COUNTER
-        CPX #0
-        BEQ HANG
-        LDA TEST_ADDRESS
-        TAY
-        PHA
-        LDX #1
-        LDA TEST_ADDRESS,X
-        TAX
-        PHA
-        JSR SET_UP_LINE
-        PLA
-        TAX
-        PLA
-        TAY
-        JSR MAKE_OP_CODE_STRING
-        CLC
-        ADC TEST_ADDRESS
-        STA TEST_ADDRESS
-        LDX #1
+        LDA #13
+        JSR $FFD2
+        LDA #'$'
+        JSR $FFD2
         LDA #0
-        ADC TEST_ADDRESS,X
-        STA TEST_ADDRESS,X
-        DEC TEST_COUNTER
-        JMP START_LOOP
+        STA STR_ADDRESS_TO_LOAD_COUNTER        
+LOAD_CHARS_LOOP
+        LDY STR_ADDRESS_TO_LOAD_COUNTER
+        JSR $FFCF
+        CMP #13
+        STA STR_ADDRESS_TO_LOAD_COUNTER,Y
+        INY
+        BEQ START_DISASSEMBLE
+        JMP LOAD_CHARS_LOOP
+START_DISASSEMBLE
+        
+
+        ;LDX STR_ADDRESS_TO_LOAD
+        ;LDY #1
+        ;LDA STR_ADDRESS_TO_LOAD,Y
+        ;TAY
+        ;JSR CHARS_TO_BYTE
+        ;LDY #1
+        ;STA ADDRESS_TO_LOAD,Y
+        ;INY
+        ;LDX STR_ADDRESS_TO_LOAD,Y
+        ;INY
+        ;LDA STR_ADDRESS_TO_LOAD,Y
+        ;TAY
+        ;JSR CHARS_TO_BYTE
+        ;STA ADDRESS_TO_LOAD
+
+        ;JSR PRINT_HEX_BYTE
+        ;LDY #1
+        ;LDA ADDRESS_TO_LOAD,Y
+        ;JSR PRINT_HEX_BYTE
+        ;JMP HANG
+
+        ;JMP START_LOOP
+        
+        ;LDX TEST_COUNTER
+        ;CPX #0
+        ;BEQ HANG
+        ;LDA TEST_ADDRESS
+        ;TAY
+        ;PHA
+        ;LDX #1
+        ;LDA TEST_ADDRESS,X
+        ;TAX
+        ;PHA
+        ;JSR SET_UP_LINE
+        ;PLA
+        ;TAX
+        ;PLA
+        ;TAY
+        ;JSR MAKE_OP_CODE_STRING
+        ;CLC
+        ;ADC TEST_ADDRESS
+        ;STA TEST_ADDRESS
+        ;LDX #1
+        ;LDA #0
+        ;ADC TEST_ADDRESS,X
+        ;STA TEST_ADDRESS,X
+        ;DEC TEST_COUNTER
+        ;JMP START_LOOP
 HANG
         JMP HANG
-TEST_COUNTER
-        byte 8
-TEST_ADDRESS
-        byte <TEST_INSTRUCTIONS
-        byte >TEST_INSTRUCTIONS
-TEST_INSTRUCTIONS
-        JSR $1234
-        BVC TEST_INSTRUCTIONS
-        BNE TEST_INSTRUCTIONS
-        CMP #0
-        LDA $1234
-        STY $12,X
-        JMP $FFFF
-        BRK
+STR_ADDRESS_TO_LOAD
+        byte 0,0,0,0
+ADDRESS_TO_LOAD
+        byte 0,0
+STR_ADDRESS_TO_LOAD_COUNTER
+        byte 0
+        
 
 ;subroutine for making opcode string
 ;address for subroutine should be passed wivic-th addr $XXYY in X and Y
@@ -362,6 +395,45 @@ SET_UP_LINE
         LDA #':'
         JSR $FFD2
         RTS
+
+;converts two hex chars to a byte
+;pass in X,Y as $XY
+;byte is returned in A
+CHARS_TO_BYTE
+        TYA
+        CMP #57 ; check to see if char is bigger than ascii for 9
+        BEQ CHARS_TO_BYTE_DIGIT_LOWER
+        BCS CHARS_TO_BYTE_ALPHA_LOWER
+CHARS_TO_BYTE_DIGIT_LOWER
+        SEC
+        SBC #48 ; subtract '0'
+        STA CHARS_TO_BYTE_SAVED
+        JMP CHARS_TO_BYTE_UPPER
+CHARS_TO_BYTE_ALPHA_LOWER
+        SEC
+        SBC #55 ; subtract 'a'
+        STA CHARS_TO_BYTE_SAVED
+CHARS_TO_BYTE_UPPER
+        TXA
+        CMP #57
+        BEQ CHARS_TO_BYTE_DIGIT_UPPER
+        BCS CHARS_TO_BYTE_ALPHA_UPPER
+CHARS_TO_BYTE_DIGIT_UPPER
+        SEC
+        SBC #48
+        JMP CHARS_TO_BYTE_END
+CHARS_TO_BYTE_ALPHA_UPPER        
+        SEC
+        SBC #55
+CHARS_TO_BYTE_END
+        ASL
+        ASL
+        ASL
+        ASL
+        ORA CHARS_TO_BYTE_SAVED
+        RTS
+CHARS_TO_BYTE_SAVED
+        byte 0
 
 OPCODE_ADDRESSING_TABLE_UNIV
         ; 000
