@@ -23,3 +23,9 @@ As of now, there are two bugs remaining that must be ironed out that I'm aware o
 -Minor bugs may still exist, and I will focus on finding and removing them as I clean up the code to make it more efficient
 
 ![Screenshot](images/6502disasm_addressing_modes.png)
+
+## 1/9/2018
+
+-Added hex and ASCII dump features. Features currently mapped to (h)ex dump key and (t)ext dump key. 
+
+![Screenshot](images/6502disasm_hex_ascii_dump.png)
