@@ -2,10 +2,44 @@ START *= $0400
         byte 0
         byte $04
 
+        JMP START_LOOP
+
+SET_MODE_HEX
+        LDA #1
+        STA PRINTING_MODE
+        JMP START_LOOP
+SET_MODE_DISASM
+        LDA #0
+        STA PRINTING_MODE
+        JMP START_LOOP
+SET_MODE_ASCII
+        LDA #2
+        STA PRINTING_MODE
+        JMP START_LOOP
+
 START_LOOP
         LDA #13
         JSR $FFD2
+        LDA PRINTING_MODE
+        CMP #0
+        BEQ START_LOOP_CMD_LINE_DISASM
+        CMP #1
+        BEQ START_LOOP_CMD_LINE_HEX
+        CMP #2
+        BEQ START_LOOP_CMD_LINE_ASCII
+
+START_LOOP_CMD_LINE_DISASM
+        LDA #'>'
+        JMP START_LOOP_FINISH_SETUP
+
+START_LOOP_CMD_LINE_HEX
         LDA #'$'
+        JMP START_LOOP_FINISH_SETUP
+
+START_LOOP_CMD_LINE_ASCII
+        LDA #'%'
+
+START_LOOP_FINISH_SETUP
         JSR $FFD2
         LDA #4
         STA STR_ADDRESS_TO_LOAD_COUNTER        
@@ -16,6 +50,12 @@ LOAD_CHARS_LOOP
         CPY #0  
         BEQ START_DISASSEMBLE
         JSR $FFCF
+        CMP #72 ; (h)ex dump mode
+        BEQ SET_MODE_HEX
+        CMP #73 ; disassemble (i)nstruction mode
+        BEQ SET_MODE_DISASM
+        CMP #84 ; (t)ext mode
+        BEQ SET_MODE_ASCII
         CMP #88 ; e(x)ecute command
         BEQ START_DISASSEMBLE_NEXT_ADDR
         CMP #81 ; (q)uit command
@@ -50,8 +90,23 @@ START_DISASSEMBLE_NEXT_ADDR
         LDY #1
         LDX ADDRESS_TO_LOAD,Y
         LDY ADDRESS_TO_LOAD
-        JSR MAKE_OP_CODE_STRING ; print disassembled line
+        LDA PRINTING_MODE
+        CMP #1
+        BEQ START_MODE_HEX
+        CMP #2
+        BEQ START_MODE_ASCII
 
+        JSR MAKE_OP_CODE_STRING ; print disassembled line
+        JMP START_CALC_NEXT_ADDR
+
+START_MODE_HEX
+        JSR MAKE_HEX_DUMP_STRING
+        JMP START_CALC_NEXT_ADDR
+
+START_MODE_ASCII        
+        JSR MAKE_ASCII_DUMP_STRING
+        
+START_CALC_NEXT_ADDR
         CLC
         ADC ADDRESS_TO_LOAD
         STA ADDRESS_TO_LOAD
@@ -73,9 +128,72 @@ STR_ADDRESS_TO_LOAD_COUNTER
         byte 0
 STR_ADDRESS_TO_LOAD_OFFSET
         byte 0
-        
+;printing mode: 0 = disassembly, 1 = hexdump, 2 = ascii 
+PRINTING_MODE
+        byte 0
+
+;subroutine for dumping hex
+;address for subroutine should be passed in $XXYY
+MAKE_HEX_DUMP_STRING
+        STY $00
+        STX $01
+
+        LDY #0
+        STY MAKE_HEX_DUMP_COUNTER
+MAKE_HEX_DUMP_STRING_LOAD_LOOP
+        LDY MAKE_HEX_DUMP_COUNTER
+        CPY #4
+        BEQ MAKE_HEX_DUMP_STRING_RET
+        LDA ($00),Y
+        JSR PRINT_HEX_BYTE
+        LDA #' '
+        JSR $FFD2
+        INC MAKE_HEX_DUMP_COUNTER
+        JMP MAKE_HEX_DUMP_STRING_LOAD_LOOP
+
+MAKE_HEX_DUMP_STRING_RET
+        LDA #4
+        RTS
+MAKE_HEX_DUMP_COUNTER
+        byte 0
+
+;subroutine for dumping ascii
+;address for subroutine should be passed in $XXYY
+MAKE_ASCII_DUMP_STRING
+        STY $00
+        STX $01
+
+        LDY #0
+        STY MAKE_ASCII_DUMP_COUNTER
+MAKE_ASCII_DUMP_STRING_LOAD_LOOP
+        LDY MAKE_ASCII_DUMP_COUNTER
+        CPY #4
+        BEQ MAKE_ASCII_DUMP_STRING_RET
+        LDA ($00),Y
+        JSR CHECK_ASCII_PRINT
+        JSR $FFD2
+        LDA #' '
+        JSR $FFD2
+        INC MAKE_ASCII_DUMP_COUNTER
+        JMP MAKE_ASCII_DUMP_STRING_LOAD_LOOP
+MAKE_ASCII_DUMP_STRING_RET
+        LDA #4
+        RTS
+MAKE_ASCII_DUMP_COUNTER
+        byte 0
+
+CHECK_ASCII_PRINT
+        CMP #32
+        BCC CHECK_ASCII_PRINT_UNPRINTABLE
+        CMP #122
+        BCS CHECK_ASCII_PRINT_UNPRINTABLE
+        RTS
+CHECK_ASCII_PRINT_UNPRINTABLE
+        LDA #127
+        RTS
+
 ;subroutine for making opcode string
-;address for subroutine should be passed wivic-th addr $XXYY in X and Y
+;address for subroutine should be passed with addr $XXYY in X and Y
 ;string to print afterwards can be found at address MAKE_OP_CODE_STRING_TXT
 ;returns number of bytes op-code used in register A
 MAKE_OP_CODE_STRING
@@ -112,7 +230,7 @@ MAKE_OP_CODE_STRING_TO_LOAD_LOOP
 MAKE_OP_CODE_STRING_INSTRUCTION_A
         LDA OP_CODE_FIRST_BYTE
         CMP #$8A
-        BCC MAKE_OP_CODE_STRING_GET_STRING_TABLE
+        BCC MAKE_OP_CODE_STRING_GET_STRING_TABLE_JMP
 
         LDA #<OPCODE_TABLE_A
         STA $00
@@ -128,6 +246,9 @@ MAKE_OP_CODE_STRING_INSTRUCTION_A
 
         LDA #1
         RTS
+
+MAKE_OP_CODE_STRING_GET_STRING_TABLE_JMP
+        JMP MAKE_OP_CODE_STRING_GET_STRING_TABLE
 
 ; single byte instruction ending with 8
 MAKE_OP_CODE_STRING_INSTRUCTION_EIGHT     
