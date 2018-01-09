@@ -5,42 +5,31 @@ START *= $0400
         JMP START_LOOP
 
 SET_MODE_HEX
-        LDA #1
-        STA PRINTING_MODE
+        LDA #'$'
+        STA PRINTING_CHAR
         JMP START_LOOP
 SET_MODE_DISASM
-        LDA #0
-        STA PRINTING_MODE
+        LDA #'>'
+        STA PRINTING_CHAR
         JMP START_LOOP
 SET_MODE_ASCII
-        LDA #2
-        STA PRINTING_MODE
+        LDA #'%'
+        STA PRINTING_CHAR
+        JMP START_LOOP
+SET_MODE_WRITE
+        LDA #'!'
+        STA PRINTING_CHAR
         JMP START_LOOP
 
 START_LOOP
         LDA #13
         JSR $FFD2
-        LDA PRINTING_MODE
-        CMP #0
-        BEQ START_LOOP_CMD_LINE_DISASM
-        CMP #1
-        BEQ START_LOOP_CMD_LINE_HEX
-        CMP #2
-        BEQ START_LOOP_CMD_LINE_ASCII
 
-START_LOOP_CMD_LINE_DISASM
-        LDA #'>'
-        JMP START_LOOP_FINISH_SETUP
-
-START_LOOP_CMD_LINE_HEX
-        LDA #'$'
-        JMP START_LOOP_FINISH_SETUP
-
-START_LOOP_CMD_LINE_ASCII
-        LDA #'%'
+        LDA PRINTING_CHAR
+        JSR $FFD2
 
 START_LOOP_FINISH_SETUP
-        JSR $FFD2
+
         LDA #4
         STA STR_ADDRESS_TO_LOAD_COUNTER        
         LDA #0
@@ -56,6 +45,8 @@ LOAD_CHARS_LOOP
         BEQ SET_MODE_DISASM
         CMP #84 ; (t)ext mode
         BEQ SET_MODE_ASCII
+        CMP #87 ; (w)rite mode
+        BEQ SET_MODE_WRITE
         CMP #88 ; e(x)ecute command
         BEQ START_DISASSEMBLE_NEXT_ADDR
         CMP #81 ; (q)uit command
@@ -90,17 +81,23 @@ START_DISASSEMBLE_NEXT_ADDR
         LDY #1
         LDX ADDRESS_TO_LOAD,Y
         LDY ADDRESS_TO_LOAD
-        LDA PRINTING_MODE
-        CMP #1
+        LDA PRINTING_CHAR
+        CMP #'$'
         BEQ START_MODE_HEX
-        CMP #2
+        CMP #'%'
         BEQ START_MODE_ASCII
+        CMP #'!'
+        BEQ START_MODE_WRITE
 
         JSR MAKE_OP_CODE_STRING ; print disassembled line
         JMP START_CALC_NEXT_ADDR
 
 START_MODE_HEX
         JSR MAKE_HEX_DUMP_STRING
+        JMP START_CALC_NEXT_ADDR
+
+START_MODE_WRITE
+        JSR MAKE_INSERT_BYTE
         JMP START_CALC_NEXT_ADDR
 
 START_MODE_ASCII        
@@ -128,9 +125,34 @@ STR_ADDRESS_TO_LOAD_COUNTER
         byte 0
 STR_ADDRESS_TO_LOAD_OFFSET
         byte 0
-;printing mode: 0 = disassembly, 1 = hexdump, 2 = ascii 
-PRINTING_MODE
-        byte 0
+;printing mode: > = disassembly, $ = hexdump, % = ascii, ! byte insert
+PRINTING_CHAR
+        text ">"
+
+;subroutine for byte insert at address
+;address should be passed in $XXYY
+MAKE_INSERT_BYTE
+        STY $00
+        STX $01
+
+        JSR $FFCF
+        STA MAKE_INSERT_BYTE_STRING
+        JSR $FFCF
+        STA MAKE_INSERT_BYTE_STRING_SEC
+
+        LDX MAKE_INSERT_BYTE_STRING
+        LDY MAKE_INSERT_BYTE_STRING_SEC
+        JSR CHARS_TO_BYTE
+
+        LDY #0
+        STA ($00),Y
+
+        LDA #1
+        RTS
+MAKE_INSERT_BYTE_STRING
+                byte 0
+MAKE_INSERT_BYTE_STRING_SEC
+                byte 0
 
 ;subroutine for dumping hex
 ;address for subroutine should be passed in $XXYY
@@ -167,17 +189,15 @@ MAKE_ASCII_DUMP_STRING
         STY MAKE_ASCII_DUMP_COUNTER
 MAKE_ASCII_DUMP_STRING_LOAD_LOOP
         LDY MAKE_ASCII_DUMP_COUNTER
-        CPY #4
+        CPY #8
         BEQ MAKE_ASCII_DUMP_STRING_RET
         LDA ($00),Y
         JSR CHECK_ASCII_PRINT
         JSR $FFD2
-        LDA #' '
-        JSR $FFD2
         INC MAKE_ASCII_DUMP_COUNTER
         JMP MAKE_ASCII_DUMP_STRING_LOAD_LOOP
 MAKE_ASCII_DUMP_STRING_RET
-        LDA #4
+        LDA #8
         RTS
 MAKE_ASCII_DUMP_COUNTER
         byte 0
@@ -911,184 +931,184 @@ HEX_PRINT_TABLE
         text "e"
         text "f"
 
-INSTRUCTION_SET_01_TEST
-        ORA ($12,X)
-        ORA $34
-        ORA #12
-        ORA $1234
-        ORA ($12),Y
-        ORA $34,X
-        ORA $1234,Y
-        ORA $1234,X
+;INSTRUCTION_SET_01_TEST
+;        ORA ($12,X)
+;        ORA $34
+;        ORA #12
+;        ORA $1234
+;        ORA ($12),Y
+;        ORA $34,X
+;        ORA $1234,Y
+;        ORA $1234,X
 
-        AND ($12,X)
-        AND $34
-        AND #12
-        AND $1234
-        AND ($12),Y
-        AND $34,X
-        AND $1234,Y
-        AND $1234,X
+;        AND ($12,X)
+;        AND $34
+;        AND #12
+;        AND $1234
+;        AND ($12),Y
+;        AND $34,X
+;        AND $1234,Y
+;        AND $1234,X
 
-        EOR ($12,X)
-        EOR $34
-        EOR #12
-        EOR $1234
-        EOR ($12),Y
-        EOR $34,X
-        EOR $1234,Y
-        EOR $1234,X
+;        EOR ($12,X)
+;        EOR $34
+;        EOR #12
+;        EOR $1234
+;        EOR ($12),Y
+;        EOR $34,X
+;        EOR $1234,Y
+;        EOR $1234,X
 
-        ADC ($12,X)
-        ADC $34
-        ADC #12
-        ADC $1234
-        ADC ($12),Y
-        ADC $34,X
-        ADC $1234,Y
-        ADC $1234,X        
+;        ADC ($12,X)
+;        ADC $34
+;        ADC #12
+;        ADC $1234
+;        ADC ($12),Y
+;        ADC $34,X
+;        ADC $1234,Y
+;        ADC $1234,X        
 
-        STA ($12,X)
-        STA $34
+;        STA ($12,X)
+;        STA $34
         ;EOR #12
-        STA $1234
-        STA ($12),Y
-        STA $34,X
-        STA $1234,Y
-        STA $1234,X
+;        STA $1234
+;        STA ($12),Y
+;        STA $34,X
+;        STA $1234,Y
+;        STA $1234,X
 
-        LDA ($12,X)
-        LDA $34
-        LDA #12
-        LDA $1234
-        LDA ($12),Y
-        LDA $34,X
-        LDA $1234,Y
-        LDA $1234,X
+;       LDA ($12,X)
+;       LDA $34
+;       LDA #12
+;       LDA $1234
+;       LDA ($12),Y
+;       LDA $34,X
+;       LDA $1234,Y
+;       LDA $1234,X
 
-        CMP ($12,X)
-        CMP $34
-        CMP #12
-        CMP $1234
-        CMP ($12),Y
-        CMP $34,X
-        CMP $1234,Y
-        CMP $1234,X
+;       CMP ($12,X)
+;       CMP $34
+;       CMP #12
+;       CMP $1234
+;       CMP ($12),Y
+;       CMP $34,X
+;       CMP $1234,Y
+;       CMP $1234,X
 
-        SBC ($12,X)
-        SBC $34
-        SBC #12
-        SBC $1234
-        SBC ($12),Y
-        SBC $34,X
-        SBC $1234,Y
-        SBC $1234,X
+;       SBC ($12,X)
+;       SBC $34
+;       SBC #12
+;       SBC $1234
+;       SBC ($12),Y
+;       SBC $34,X
+;       SBC $1234,Y
+;       SBC $1234,X
 
-INSTRUCTION_SET_10_TEST
-        ASL $12
-        ASL
-        ASL $1234
-        ASL $12,X
-        ASL $1234,X
+;NSTRUCTION_SET_10_TEST
+;       ASL $12
+;       ASL
+;       ASL $1234
+;       ASL $12,X
+;       ASL $1234,X
+;
+;      ROL $12
+;       ROL
+;       ROL $1234
+;       ROL $12,X
+;       ROL $1234,X;
+;
+;       LSR $12
+;       LSR
+;       LSR $1234
+;       LSR $12,X
+;       LSR $1234,X
+;
+;       ROR $12
+;       ROR
+;       ROR $1234
+;       ROR $12,X
+;       ROR $1234,X
 
-        ROL $12
-        ROL
-        ROL $1234
-        ROL $12,X
-        ROL $1234,X
+;      STX $12
+;       STX $1234
+;       STX $34,Y;
+;
+ ;      LDX #$12
+ ;      LDX $34
+ ;      LDX $1234
+ ;      LDX $12,Y
+ ;      LDX $1234,Y
 
-        LSR $12
-        LSR
-        LSR $1234
-        LSR $12,X
-        LSR $1234,X
-
-        ROR $12
-        ROR
-        ROR $1234
-        ROR $12,X
-        ROR $1234,X
-
-        STX $12
-        STX $1234
-        STX $34,Y
-
-        LDX #$12
-        LDX $34
-        LDX $1234
-        LDX $12,Y
-        LDX $1234,Y
-
-        DEC $12
-        DEC $1234
-        DEC $34,X
-        DEC $1234,X
+ ;      DEC $12
+;       DEC $1234
+;       DEC $34,X
+;       DEC $1234,X
+;       
+;       INC $12
+;       INC $1234
+;       INC $34,X
+;       INC $1234,X        ;;
+;
+;NSTRUCTION_SET_00_TEST
+;       BIT $12
+;       BIT $1234
         
-        INC $12
-        INC $1234
-        INC $34,X
-        INC $1234,X        
-
-INSTRUCTION_SET_00_TEST
-        BIT $12
-        BIT $1234
+;       JMP $1234
         
-        JMP $1234
-        
-        STY $12
-        STY $1234
-        STY $12,X
+;       STY $12
+;       STY $1234
+;       STY $12,X
 
-        LDY #$12
-        LDY $34
-        LDY $1234
-        LDY $12,X
-        LDY $1234,X
+        ;DY #$12
+;       LDY $34
+;       LDY $1234
+;       LDY $12,X
+;       LDY $1234,X
 
-        CPY #$12
-        CPY $34
-        CPY $1234
+        ;PY #$12
+        ;PY $34
+;        CPY $1234
 
-        CPX #$12
-        CPX $34
-        CPX $1234
+;        CPX #$12
+;        CPX $34
+;        CPX $1234;
 
-INSTRUCTION_SET_BRANCH_TEST
-        BPL INSTRUCTION_SET_BRANCH_TEST
-        BMI INSTRUCTION_SET_BRANCH_TEST
-        BVC INSTRUCTION_SET_BRANCH_TEST
-        BVS INSTRUCTION_SET_BRANCH_TEST
-        BCC INSTRUCTION_SET_BRANCH_TEST
-        BCC INSTRUCTION_SET_BRANCH_TEST
-        BCS INSTRUCTION_SET_BRANCH_TEST
-        BCS INSTRUCTION_SET_BRANCH_TEST
-        BNE INSTRUCTION_SET_BRANCH_TEST
-        BEQ INSTRUCTION_SET_BRANCH_TEST
-        BRK
-        JSR $1234
-        RTI
-        RTS
+;INSTRUCTION_SET_BRANCH_TEST
+;        BPL INSTRUCTION_SET_BRANCH_TEST
+;        BMI INSTRUCTION_SET_BRANCH_TEST
+;        BVC INSTRUCTION_SET_BRANCH_TEST
+;        BVS INSTRUCTION_SET_BRANCH_TEST
+;        BCC INSTRUCTION_SET_BRANCH_TEST
+;        BCC INSTRUCTION_SET_BRANCH_TEST
+;        BCS INSTRUCTION_SET_BRANCH_TEST
+;        BCS INSTRUCTION_SET_BRANCH_TEST
+;        BNE INSTRUCTION_SET_BRANCH_TEST
+;        BEQ INSTRUCTION_SET_BRANCH_TEST
+;        BRK
+;        JSR $1234
+;        RTI
+;        RTS
 
-INSTRUCTION_SET_SINGLE_TEST
-        PHP
-        CLC
-        PLP
-        SEC
-        PHA
-        CLI
-        PLA
-        SEI
-        DEY
-        TYA
-        TAY
-        CLV
-        INY
-        CLD
-        INX
-        SED
-        TXA
-        TXS
-        TAX
-        TSX
-        DEX
-        NOP
+;INSTRUCTION_SET_SINGLE_TEST
+;        PHP
+;        CLC
+;        PLP
+;        SEC
+;        PHA
+;        CLI
+;        PLA
+;        SEI
+;        DEY
+;        TYA
+;        TAY
+;        CLV
+;        INY
+;        CLD
+;        INX
+;        SED
+;        TXA
+;        TXS
+;        TAX
+;        TSX
+;        DEX
+;        NOP
