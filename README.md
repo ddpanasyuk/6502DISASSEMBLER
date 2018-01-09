@@ -2,7 +2,7 @@
 
 6502 disassembler written in 6502 ASM for a VIC-20, made for the purpose of futher learning VIC-20 computing. End goal is implementation of memory dump disassembly on programs currently loaded in VIC-20 RAM for debugging on physical VIC-20 hardware.
 
-## 1/8/2018 CHANGELOG
+## 1/7/2018 CHANGELOG
 
 -Implemented basic command-line for address entry. Location in memory is input as two hexadecimal bytes, and confirmed with the enter key
 
@@ -12,4 +12,14 @@
 
 As of now, there are two bugs remaining that must be ironed out that I'm aware of at the moment. The first is the incorrect dissassembly of the indirect indexed addressing mode. The instruction and operands are disassembled and listed correctly, but they are shown as being used in indexed addressing mode. The second is certain one byte instructions being disassembled incorrectly and listed as the wrong instruction. These will be fixed in the next few days. 
 
-![Screenshot](6502disasm_start.png)
+![Screenshot](images/6502disasm_start.png)
+
+## 1/8/2018 CHANGELOG
+
+-All documented instructions and addressing modes supported in disassembly.
+
+-Added a table of every single possible instruction on the 6502 processor at the end of the program for testing purposes. This will be removed when the disassembly part of the program's testing isn't needed anymore.
+
+-Minor bugs may still exist, and I will focus on finding and removing them as I clean up the code to make it more efficient
+
+![Screenshot](images/6502disasm_addressing_modes.png)
