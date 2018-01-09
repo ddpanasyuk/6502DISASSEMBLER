@@ -26,6 +26,6 @@ As of now, there are two bugs remaining that must be ironed out that I'm aware o
 
 ## 1/9/2018
 
--Added hex and ASCII dump features. Features currently mapped to (h)ex dump key and (t)ext dump key. 
+-Added hex and ASCII dump features. Features currently mapped to (h)ex dump key and (t)ext dump key. Bytes that do not meet the criteria for printable ASCII characters are represented with a triangle in the top right of the character space. 
 
 ![Screenshot](images/6502disasm_hex_ascii_dump.png)
