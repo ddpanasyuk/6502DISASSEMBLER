@@ -73,7 +73,7 @@ STR_ADDRESS_TO_LOAD_COUNTER
         byte 0
 STR_ADDRESS_TO_LOAD_OFFSET
         byte 0
-
+        
 ;subroutine for making opcode string
 ;address for subroutine should be passed wivic-th addr $XXYY in X and Y
 ;string to print afterwards can be found at address MAKE_OP_CODE_STRING_TXT
@@ -95,9 +95,39 @@ MAKE_OP_CODE_STRING_TO_LOAD_LOOP
         BEQ MAKE_OP_CODE_STRING_INSTRUCTION_EIGHT
         CMP #$A
         BEQ MAKE_OP_CODE_STRING_INSTRUCTION_A
+        LDA OP_CODE_FIRST_BYTE
         CMP #$0
         BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
+        CMP #$20
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
+        CMP #$40
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
+        CMP #$60
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH ; ham-fisted approach during testing, will fix later
+        AND #$1F
+        CMP #$10
+        BEQ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
         JMP MAKE_OP_CODE_STRING_GET_STRING_TABLE
+
+MAKE_OP_CODE_STRING_INSTRUCTION_A
+        LDA OP_CODE_FIRST_BYTE
+        CMP #$8A
+        BCC MAKE_OP_CODE_STRING_GET_STRING_TABLE
+
+        LDA #<OPCODE_TABLE_A
+        STA $00
+        LDA #>OPCODE_TABLE_A
+        STA $01
+
+        LDA OP_CODE_FIRST_BYTE
+        AND #$F0
+        LSR
+        LSR
+        AND #$1F                
+        JSR PRINT_STRING
+
+        LDA #1
+        RTS
 
 ; single byte instruction ending with 8
 MAKE_OP_CODE_STRING_INSTRUCTION_EIGHT     
@@ -117,6 +147,7 @@ MAKE_OP_CODE_STRING_INSTRUCTION_ONE_BYTE_END
         RTS
 
 MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH
+
         LDA #<OPCODE_TABLE_BRANCH
         STA $00
         LDA #>OPCODE_TABLE_BRANCH
@@ -161,23 +192,6 @@ MAKE_OP_CODE_STRING_INSTRUCTION_BRANCH_JSR
         JSR PRINT_HEX_BYTE
 
         LDA #$3
-        RTS
-
-
-MAKE_OP_CODE_STRING_INSTRUCTION_A
-        LDA #<OPCODE_TABLE_A
-        STA $00
-        LDA #>OPCODE_TABLE_A
-        STA $01
-
-        LDA OP_CODE_FIRST_BYTE
-        AND #$F0
-        LSR
-        LSR
-        AND #$1F                
-        JSR PRINT_STRING
-
-        LDA #1
         RTS
 
 MAKE_OP_CODE_STRING_GET_STRING_TABLE
@@ -240,10 +254,20 @@ MAKE_OP_CODE_ADDRESSING_JMP
 ADDRESSING_ZERO_PAGE_X
 ADDRESSING_ZERO_PAGE_Y
 ADDRESSING_ZERO_PAGE ; all same, only difference being register offset
+        LDA OP_CODE_FIRST_BYTE
+        AND #$1F
+        CMP #$1
+        BEQ ADDRESSING_ZERO_PAGE_INDIRECT_INDEXED
+        CMP #$11
+        BEQ ADDRESSING_ZERO_PAGE_INDIRECT_OFFSET
         JSR PRINT_SYM_SPACE
+        LDA #' '
+        STA ADDRESSING_ZERO_PAGE_PAREN_SECOND
+        STA ADDRESSING_ZERO_PAGE_PAREN_THIRD
+ADDRESSING_ZERO_PAGE_POST_PAREN
         LDA OP_CODE_SECOND_BYTE
         JSR PRINT_HEX_BYTE
-        LDA #' '
+        LDA ADDRESSING_ZERO_PAGE_PAREN_SECOND
         JSR $FFD2
         PLA
         JSR GET_ADDRESSING_MODE_CHAR
@@ -258,7 +282,49 @@ ADDRESSING_ZERO_PAGE_Y_CHAR
         LDA #$59
 ADDRESSING_ZERO_PAGE_X_CHAR        
         JSR $FFD2
+
+        LDA ADDRESSING_ZERO_PAGE_PAREN_THIRD
+        JSR $FFD2
+
         JMP MAKE_OP_CODE_STRING_DUAL_BYTE_END
+ADDRESSING_ZERO_PAGE_PAREN_SECOND
+        byte 0
+ADDRESSING_ZERO_PAGE_PAREN_THIRD
+        byte 0
+
+ADDRESSING_ZERO_PAGE_INDIRECT_INDEXED
+        LDA #' '
+        STA ADDRESSING_ZERO_PAGE_PAREN_SECOND
+        JSR $FFD2
+        LDA #$28 ; '('
+        JSR $FFD2
+        LDA #'$'
+        JSR $FFD2
+        LDA #$29
+        STA ADDRESSING_ZERO_PAGE_PAREN_THIRD
+        JMP ADDRESSING_ZERO_PAGE_POST_PAREN
+ADDRESSING_ZERO_PAGE_INDIRECT_OFFSET
+        LDA #' '
+        STA ADDRESSING_ZERO_PAGE_PAREN_THIRD
+        JSR $FFD2
+        LDA #$28 ; '('
+        JSR $FFD2
+        LDA #'$'
+        JSR $FFD2
+        LDA #$29
+        STA ADDRESSING_ZERO_PAGE_PAREN_SECOND
+        JMP ADDRESSING_ZERO_PAGE_POST_PAREN
+
+MAKE_OP_CODE_STRING_END
+        PLA
+        LDA #1
+        RTS
+MAKE_OP_CODE_STRING_DUAL_BYTE_END
+        LDA #2
+        RTS
+MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
+        LDA #3
+        RTS        
 
 ADDRESSING_IMM ; immediate addressing
         LDA #' '
@@ -295,16 +361,6 @@ ADDRESSING_ABS_X_CHAR
         JSR $FFD2
         JMP MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
 
-MAKE_OP_CODE_STRING_END
-        PLA
-        LDA #1
-        RTS
-MAKE_OP_CODE_STRING_DUAL_BYTE_END
-        LDA #2
-        RTS
-MAKE_OP_CODE_STRING_TRIPLE_BYTE_END
-        LDA #3
-        RTS
 
 ;function that gets addressing mode character, returns it in A
 ;3 bit addressing should be passed in A
@@ -733,3 +789,185 @@ HEX_PRINT_TABLE
         text "d"
         text "e"
         text "f"
+
+INSTRUCTION_SET_01_TEST
+        ORA ($12,X)
+        ORA $34
+        ORA #12
+        ORA $1234
+        ORA ($12),Y
+        ORA $34,X
+        ORA $1234,Y
+        ORA $1234,X
+
+        AND ($12,X)
+        AND $34
+        AND #12
+        AND $1234
+        AND ($12),Y
+        AND $34,X
+        AND $1234,Y
+        AND $1234,X
+
+        EOR ($12,X)
+        EOR $34
+        EOR #12
+        EOR $1234
+        EOR ($12),Y
+        EOR $34,X
+        EOR $1234,Y
+        EOR $1234,X
+
+        ADC ($12,X)
+        ADC $34
+        ADC #12
+        ADC $1234
+        ADC ($12),Y
+        ADC $34,X
+        ADC $1234,Y
+        ADC $1234,X        
+
+        STA ($12,X)
+        STA $34
+        ;EOR #12
+        STA $1234
+        STA ($12),Y
+        STA $34,X
+        STA $1234,Y
+        STA $1234,X
+
+        LDA ($12,X)
+        LDA $34
+        LDA #12
+        LDA $1234
+        LDA ($12),Y
+        LDA $34,X
+        LDA $1234,Y
+        LDA $1234,X
+
+        CMP ($12,X)
+        CMP $34
+        CMP #12
+        CMP $1234
+        CMP ($12),Y
+        CMP $34,X
+        CMP $1234,Y
+        CMP $1234,X
+
+        SBC ($12,X)
+        SBC $34
+        SBC #12
+        SBC $1234
+        SBC ($12),Y
+        SBC $34,X
+        SBC $1234,Y
+        SBC $1234,X
+
+INSTRUCTION_SET_10_TEST
+        ASL $12
+        ASL
+        ASL $1234
+        ASL $12,X
+        ASL $1234,X
+
+        ROL $12
+        ROL
+        ROL $1234
+        ROL $12,X
+        ROL $1234,X
+
+        LSR $12
+        LSR
+        LSR $1234
+        LSR $12,X
+        LSR $1234,X
+
+        ROR $12
+        ROR
+        ROR $1234
+        ROR $12,X
+        ROR $1234,X
+
+        STX $12
+        STX $1234
+        STX $34,Y
+
+        LDX #$12
+        LDX $34
+        LDX $1234
+        LDX $12,Y
+        LDX $1234,Y
+
+        DEC $12
+        DEC $1234
+        DEC $34,X
+        DEC $1234,X
+        
+        INC $12
+        INC $1234
+        INC $34,X
+        INC $1234,X        
+
+INSTRUCTION_SET_00_TEST
+        BIT $12
+        BIT $1234
+        
+        JMP $1234
+        
+        STY $12
+        STY $1234
+        STY $12,X
+
+        LDY #$12
+        LDY $34
+        LDY $1234
+        LDY $12,X
+        LDY $1234,X
+
+        CPY #$12
+        CPY $34
+        CPY $1234
+
+        CPX #$12
+        CPX $34
+        CPX $1234
+
+INSTRUCTION_SET_BRANCH_TEST
+        BPL INSTRUCTION_SET_BRANCH_TEST
+        BMI INSTRUCTION_SET_BRANCH_TEST
+        BVC INSTRUCTION_SET_BRANCH_TEST
+        BVS INSTRUCTION_SET_BRANCH_TEST
+        BCC INSTRUCTION_SET_BRANCH_TEST
+        BCC INSTRUCTION_SET_BRANCH_TEST
+        BCS INSTRUCTION_SET_BRANCH_TEST
+        BCS INSTRUCTION_SET_BRANCH_TEST
+        BNE INSTRUCTION_SET_BRANCH_TEST
+        BEQ INSTRUCTION_SET_BRANCH_TEST
+        BRK
+        JSR $1234
+        RTI
+        RTS
+
+INSTRUCTION_SET_SINGLE_TEST
+        PHP
+        CLC
+        PLP
+        SEC
+        PHA
+        CLI
+        PLA
+        SEI
+        DEY
+        TYA
+        TAY
+        CLV
+        INY
+        CLD
+        INX
+        SED
+        TXA
+        TXS
+        TAX
+        TSX
+        DEX
+        NOP
