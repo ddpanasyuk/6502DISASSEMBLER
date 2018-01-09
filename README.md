@@ -30,13 +30,17 @@ As of now, there are two bugs remaining that must be ironed out that I'm aware o
 
 ![Screenshot](images/6502disasm_hex_ascii_dump.png)
 
+
 -Added byte insert feature, activated with (w)rite key. Bytes are read one at a time from the user and written to the requested address. Next address can be accessed with e(x)ecute key without manually entering it. 
 
 ![Screenshot](images/6502disasm_byte_insert_1.png)
+
 In this first image, the bytes for LDA #'&', JSR $FFD2, JSR $FFC2, BRK are manually entered into the VIC-20's RAM at address $A000
 
 ![Screenshot](images/6502disasm_byte_insert_2.png)
+
 We can confirm that we did in fact write the correct bytes by running a disassembly at this address. 
 
 ![Screenshot](images/6502disasm_byte_insert_3.png)
+
 Then, if we exit the program and jump to $A000 from BASIC (decimal address 40960), we can see that these short few instructions print an ampersand and then wait for the user to press any key before exiting to BASIC. 
